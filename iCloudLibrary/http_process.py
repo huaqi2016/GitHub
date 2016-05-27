@@ -1,4 +1,4 @@
-#coding:utf-8
+#coding=utf-8
 
 import json
 from excel_process import excel_process
@@ -79,6 +79,19 @@ class http_process(object):
         time.sleep(3)
         return res
 
+    def process_encode(self, body):
+        keys=[]
+        values=[]
+        for k in body.keys():
+            if isinstance(body[k], unicode):
+                keys.append(k)
+                values.append(body[k].encode('utf-8'))
+            else:
+                keys.append(k)
+                values.append(str(body[k]).decode('utf-8'))
+        #print dict(zip(keys, values))
+        return dict(zip(keys, values))
+
     def http_exp(self, url, path, tab, header, methods):
         retList=[]
         if path in [None, '']:
@@ -88,18 +101,17 @@ class http_process(object):
             ep = excel_process()
             dicts=ep.readExcelExp(path, tab)
             for k in dicts.keys():
-                print "req body:"
-                print dicts[k]
+                print '-------------------------------------------'
+                print dicts[k]   ###这个log不要删
+                dicts[k]=self.process_encode(dicts[k])
                 response=self.http_general(url, dicts[k], header, methods)
                 m=re.search(str(k[2:5]), response)  #str(k[2:5])  ---> 10200变成200
                 print 'EXPECT result is %s'%str(k[2:5])
                 if m is not None:
                     print "SUCCESS"
-                    print '-------------------------------------------'
                     retList.append('SUCCESS')
                 else:
                     print "FAILED"
-                    print '-------------------------------------------'
                     retList.append('FAILED')
             print retList
             return retList
@@ -114,6 +126,7 @@ if __name__ == '__main__':
     #datas=hp.general_data('E:\\script\\test\\oauth\\case\\nickname_change.xlsx')
     #hp.http_general("http://192.168.22.61/users/friends/300", None, '{"Authorization":"Bearer 33bf4b6173ca584548012da8a5057ef3"}', 'POST')
     #hp.http_general("http://192.168.22.61/users/friends/300", None, '{"Authorization":"Bearer 01f0132df1e2b4ab1742053382bc6ec6"}', 'POST')
-    #hp.http_general('/event/thumbsup/eventId/1', None, header, 'POST')
-    hp.http_exp('http://192.168.22.61/album/create', 'E:\\script\\test\\robotframework\\case\\album.xlsx', 'AlbumCreate', header, 'POST')
+    #hp.http_general('http://192.168.22.61/v1/album/create', {u'caption': u'\u3002', u'description': u'\u3002', u'permit': 0}, header, 'PUT')
+    #hp.http_exp('http://192.168.22.61/album/create', 'E:\\script\\test\\robotframework\\case\\album.xlsx', 'AlbumCreate', header, 'POST')
     #hp.http_exp('http://192.168.22.61/album/91', None, None, header, 'DELETE')
+    #hp.process_encode({u'caption': u'\u3002', u'description': u'\u3002', u'permit': 0})
