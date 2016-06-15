@@ -1,4 +1,4 @@
-#coding=utf-8
+# -*- coding: utf-8 -*-
 
 import json
 from excel_process import excel_process
@@ -6,6 +6,9 @@ import time
 import urllib
 import urllib2
 import re
+import sys
+import datetime
+import copy
 __author__ = 'zhoushengqiang'
 
 header = '{"Authorization":"Bearer 01f0132df1e2b4ab1742053382bc6ec6"}'
@@ -20,28 +23,93 @@ class http_process(object):
         req_bodys = exp.readExcel(fp)
         return req_bodys
 
-    def health_data(self, fp):
+    def health_data(self, fp, tab):
         excel_data=[]  #读取的excel数据
         detailsList=[] #不加detail头的detail数据
-        general_dict={"distance":144.0, "endTime":1459853880000, "energy":32.69, "startTime":1459853460000, "steps":206, "type":6}
+        general_dict={"distance":144.0, "endTime":2, "energy":32.69, "startTime":1, "steps":206, "type":6, "userId":300}
         tempDict={} #加了detail头的detail数据
         gbody={}     #加了general的数据
         gbodys=[]    #request列表
         bodys=[]    #三个detail作为一个request
+        ret={}
+        expList=[]
         exp= excel_process()
-        excel_data=exp.readExcel(fp)
-        for i in range(0, len(excel_data), 1): #excel三行数据组成一个detail
-            detailsList.append(excel_data[i:i+1])
+        excel_data=exp.readExcelExp(fp, tab)
+        for i in excel_data.keys(): #excel三行数据组成一个detail
+            detailsList.append(excel_data[i])
+            expList.append(i)
         for i in range(len(detailsList)):
-            tempDict["details"] = detailsList[i]
+            t=[]
+            t.append(detailsList[i])
+            tempDict["details"] = t
             gbody = dict(tempDict, **general_dict)    #两个dict相加
-            gbodys.append(gbody)
-        for i in range(0, len(gbodys), 3):  # 三个detail作为一个request
-            bodys.append(gbodys[i:i+3])
+            gbodys.append(gbody.copy())
+        for i in range(0, len(gbodys), 1):  # 三个detail作为一个request
+            bodys.append(gbodys[i:i+1])
         for body in bodys:
-            ret={"data":str(body).replace("'", '"')}
-            rets.append(ret)
-        return rets
+            ret["data"]=body
+            rets.append(ret.copy())
+        reqbody = dict(zip(expList, rets))
+        return reqbody
+
+    def help_data(self, fp, tab):
+        excel_data=[]  #读取的excel数据
+        detailsList=[] #不加detail头的detail数据
+        tempDict={} #加了detail头的detail数据
+        gbody={}     #加了general的数据
+        gbodys=[]    #request列表
+        bodys=[]    #三个detail作为一个request
+        expList=[]
+        exp= excel_process()
+        excel_data=exp.readExcelExp(fp, tab)
+        for k in excel_data.keys():
+            print json.dumps(excel_data[k])
+            gbody["data"]=json.dumps(excel_data[k])
+            gbodys.append(gbody.copy())
+            expList.append(k)
+        ret = dict(zip(expList, gbodys))
+        print ret
+        return ret
+
+    def user_json_data(self, fp, tab):
+        excel_data=[]  #读取的excel数据
+        detailsList=[] #不加detail头的detail数据
+        tempDict={} #加了detail头的detail数据
+        gbody={}     #加了general的数据
+        gbodys=[]    #request列表
+        bodys=[]    #三个detail作为一个request
+        expList=[]
+        exp= excel_process()
+        excel_data=exp.readExcelExp(fp, tab)
+        print excel_data
+        for k in excel_data.keys():
+            print json.dumps(excel_data[k])
+            gbody["detailJson"]=json.dumps(excel_data[k])
+            gbodys.append(gbody.copy())
+            expList.append(k)
+        ret = dict(zip(expList, gbodys))
+        print ret
+        return ret
+
+    def suggest_data(self, fp, tab):
+        excel_data=[]  #读取的excel数据
+        detailsList=[] #不加detail头的detail数据
+        tempDict={} #加了detail头的detail数据
+        gbody={}     #加了general的数据
+        gbodys=[]    #request列表
+        bodys=[]    #三个detail作为一个request
+        expList=[]
+        exp= excel_process()
+        excel_data=exp.readExcelExp(fp, tab)
+        for k in excel_data.keys():
+            t=[]
+            t.append(excel_data[k])
+            gbody["data"]=json.dumps(t)
+            gbodys.append(gbody.copy())
+            expList.append(k)
+        ret = dict(zip(expList, gbodys))
+        print ret
+        return ret
 
     def iCloud_http_general(self, req_url, req_bodys, header, methods):
         '''
@@ -97,24 +165,88 @@ class http_process(object):
         if path in [None, '']:
             response=self.http_general(url, None, header, methods)
             return response
-        else:
-            ep = excel_process()
-            dicts=ep.readExcelExp(path, tab)
-            for k in dicts.keys():
-                print '-------------------------------------------'
-                print dicts[k]   ###这个log不要删
-                dicts[k]=self.process_encode(dicts[k])
-                response=self.http_general(url, dicts[k], header, methods)
-                m=re.search(str(k[2:5]), response)  #str(k[2:5])  ---> 10200变成200
-                print 'EXPECT result is %s'%str(k[2:5])
-                if m is not None:
-                    print "SUCCESS"
-                    retList.append('SUCCESS')
-                else:
-                    print "FAILED"
-                    retList.append('FAILED')
-            print retList
-            return retList
+        ep = excel_process()
+        dicts=ep.readExcelExp(path, tab)
+
+        reg=re.compile('/help/user/save')
+        m=reg.search(url)
+        if m is not None:
+            dicts=self.help_data(path, tab)
+
+        reg=re.compile('/health/user/suggest')
+        n=reg.search(url)
+        if n is not None:
+            dicts=self.suggest_data(path, tab)
+
+        reg=re.compile('/users/detail')
+        m=reg.search(url)
+        if m is not None:
+            dicts=self.user_json_data(path, tab)
+        for k in dicts.keys():
+            print '-------------------------------------------'
+            print dicts[k]   ###这个log不要删
+
+            dicts[k]=self.process_encode(dicts[k])
+            response=self.http_general(url, dicts[k], header, methods)
+            m=re.search(str(k[2:5]), response)  #str(k[2:5])  ---> 10200变成200
+            print 'EXPECT result is %s'%str(k[2:5])
+            if m is not None:
+                print "SUCCESS"
+                retList.append('SUCCESS')
+            else:
+                print "FAILED"
+                retList.append('FAILED')
+        print retList
+        return retList
+
+    def http_health_save(self, url, path, tab, header, methods):
+        '''
+        健康服务接口：数据存储服务专用API
+        :param url:
+        :param path:
+        :param tab:
+        :param header:
+        :param methods:
+        :return:
+        '''
+        retList=[]
+        dicts=self.health_data(path, tab)
+        print dicts
+        for k in dicts.keys():
+            print '-------------------------------------------'
+            l1=[]
+            l2=[]
+            tmpd=dicts[k]['data'][0]['details'][0]
+            #l1=[x.encode(sys.stdout.encoding) for x in tmpd.keys()]
+            l1=[x.encode('utf-8') for x in tmpd.keys()]
+            for v in tmpd.values():
+                l2.append(int(v))
+            d= dict(map(None, l1, l2))
+
+            dicts[k]['data'][0]['details'].pop(0)
+            dicts[k]['data'][0]['details'].append(d)
+            dicts[k]['data'][0]['startTime']=((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
+            dicts[k]['data'][0]['endTime']=((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
+            dicts[k]['data']=str(dicts[k]['data']).replace("'", '"')
+            print dicts[k]    ###这个log不要删
+            test_data_urlencode = urllib.urlencode(dicts[k])
+            test_data_urlencode = test_data_urlencode.encode('utf-8')
+            headerdata = json.loads(header)
+            req = urllib2.Request(url=url, data=test_data_urlencode, headers=headerdata)
+            req.get_method = lambda : methods   #等价于 return methods
+            res_data = urllib2.urlopen(req)
+            res = res_data.read().decode('utf-8')
+            print res
+            m=re.search(str(k[2:5]), res)  #str(k[2:5])  ---> 10200变成200
+            print 'EXPECT result is %s'%str(k[2:5])
+            if m is not None:
+                print "SUCCESS"
+                retList.append('SUCCESS')
+            else:
+                print "FAILED"
+                retList.append('FAILED')
+        print retList
+        return retList
 
     def add_dict(self, d1, d2):
         d={}
@@ -123,10 +255,8 @@ class http_process(object):
 
 if __name__ == '__main__':
     hp=http_process()
-    #datas=hp.general_data('E:\\script\\test\\oauth\\case\\nickname_change.xlsx')
-    #hp.http_general("http://192.168.22.61/users/friends/300", None, '{"Authorization":"Bearer 33bf4b6173ca584548012da8a5057ef3"}', 'POST')
-    #hp.http_general("http://192.168.22.61/users/friends/300", None, '{"Authorization":"Bearer 01f0132df1e2b4ab1742053382bc6ec6"}', 'POST')
-    #hp.http_general('http://192.168.22.61/v1/album/create', {u'caption': u'\u3002', u'description': u'\u3002', u'permit': 0}, header, 'PUT')
-    #hp.http_exp('http://192.168.22.61/album/create', 'E:\\script\\test\\robotframework\\case\\album.xlsx', 'AlbumCreate', header, 'POST')
-    #hp.http_exp('http://192.168.22.61/album/91', None, None, header, 'DELETE')
-    #hp.process_encode({u'caption': u'\u3002', u'description': u'\u3002', u'permit': 0})
+    #hp.http_exp('http://192.168.22.61/v1/help/user/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'save', header, 'POST')
+    #hp.health_data("E:\\script\\test\\oauth\\case\\health_data.xlsx", "save")
+    #hp.http_health_save('http://192.168.22.61/v1/health/data/save', 'E:\\script\\test\\robotframework\\case\\health_data.xlsx', 'save', header, 'POST')
+    #hp.http_exp('http://192.168.22.61/v1/health/user/suggest', 'E:\\script\\test\\oauth\\case\\health_suggest_type_5.xlsx', 'suggest', header, 'POST')
+    hp.http_exp('http://192.168.22.61/v1/users/detail', 'E:\\script\\test\\robotframework\\case\\user.xlsx', 'modifyinfo', header, 'PUT')

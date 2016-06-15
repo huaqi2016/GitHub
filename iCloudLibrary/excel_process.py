@@ -1,5 +1,6 @@
 #!/usr/bin/env_python
-#coding:utf-8
+# -*- coding: utf-8 -*-
+#coding=utf-8
 
 from openpyxl import Workbook
 from openpyxl import load_workbook
@@ -76,6 +77,8 @@ class excel_process(object):
             for j in range(0,col):
                 if ws.rows[i][0].value is None:
                     break
+                if ws.rows[i][j].value is None:
+                    ws.rows[i][j].value=''
                 lineList.append(ws.rows[i][j].value)
 
         for i in range(0,len(lineList),col):
@@ -85,13 +88,13 @@ class excel_process(object):
             dictParam = dict(zip(*[dataList[0], dataList[i]]))
             expectList.append(dictParam['expect'])
             dictParam.pop('expect')
-            print dictParam
+            #print dictParam
             paramList.append(dictParam)
         #print expectList
         for i in range(10, len(expectList)+10):
             expmodList.append(str(i)+str(expectList[i-10]))
         ret = dict(zip(expmodList, paramList))
-        print ret
+        #print ret
         return ret
 
     #对第colnum列进行写操作，此模块在读取和写入excel时，A1格的角标是[1,1]
