@@ -168,12 +168,6 @@ class http_process(object):
             return response
         ep = excel_process()
         dicts=ep.readExcelExp(path, tab)
-        '''
-        reg=re.compile('/help/user/save|/help/data/push|/help/record/save')
-        m=reg.search(url)
-        if m is not None:
-            dicts=self.help_data(path, tab)
-        '''
         reg=re.compile('/health/user/suggest')
         n=reg.search(url)
         if n is not None:
@@ -209,11 +203,15 @@ class http_process(object):
         dicts=self.help_data(path, tab)
         for k in dicts.keys():
             print '-------------------------------------------'
-            test_data_urlencode=json.dumps(dicts[k])
-            print test_data_urlencode  ###这个log不要删
+            test_data_json=json.dumps(dicts[k])
+            reg=re.compile('/help/data/push')
+            n=reg.search(url)
+            if n is not None:
+                test_data_json='['+test_data_json+']'
+            print test_data_json  ###这个log不要删
             header='{"Authorization":"Bearer 01f0132df1e2b4ab1742053382bc6ec6", "Content-Type":"application/json"}'
             headerdata = json.loads(header)
-            req = urllib2.Request(url=url, data=test_data_urlencode, headers=headerdata)
+            req = urllib2.Request(url=url, data=test_data_json, headers=headerdata)
             req.get_method = lambda : methods   #等价于 return methods
             res_data = urllib2.urlopen(req)
             response = res_data.read().decode('utf-8')
@@ -286,7 +284,8 @@ class http_process(object):
 if __name__ == '__main__':
     hp=http_process()
     #hp.http_help('http://192.168.22.61/v1/help/data/push', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'push', header, 'POST')
-    #hp.http_help('http://192.168.22.61/v1/help/user/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'save', header, 'POST')
+    #hp.http_help('http://192.168.22.61/v1/help/user/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'usersave', header, 'POST')
+    hp.http_help('http://192.168.22.61/v1/help/record/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'recordsave', header, 'POST')
     #hp.http_health_save('http://192.168.22.61/v1/health/data/save', 'E:\\script\\test\\robotframework\\case\\health_data.xlsx', 'save', header, 'POST')
     #hp.http_exp('http://192.168.22.61/v1/health/user/suggest', 'E:\\script\\test\\oauth\\case\\health_suggest_type_5.xlsx', 'suggest', header, 'POST')
-    hp.http_exp('http://192.168.22.61/v1/users/detail', 'E:\\script\\test\\robotframework\\case\\user.xlsx', 'modifyinfo', header, 'PUT')
+    #hp.http_exp('http://192.168.22.61/v1/users/detail', 'E:\\script\\test\\robotframework\\case\\user.xlsx', 'modifyinfo', header, 'PUT')
