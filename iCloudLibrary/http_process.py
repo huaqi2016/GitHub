@@ -52,6 +52,37 @@ class http_process(object):
         reqbody = dict(zip(expList, rets))
         return reqbody
 
+    def push_data(self, fp, tab):
+        excel_data=[]  #读取的excel数据
+        exp= excel_process()
+        detailsList=[] #不加detail头的detail数据
+        general_dict=exp.readExcel(fp, "pushhead")
+        tempDict={} #加了detail头的detail数据
+        gbody={}     #加了general的数据
+        gbodys=[]    #request列表
+        bodys=[]    #三个detail作为一个request
+        ret={}
+        rets=[]
+        expList=[]
+        req={}
+        reqs=[]
+        excel_data=exp.readExcelExp(fp, tab)
+        for i in excel_data.keys(): #excel三行数据组成一个detail
+            detailsList.append(excel_data[i])
+            expList.append(i)
+        for i in range(len(detailsList)):
+            tempDict["data"] = detailsList[i]
+            for j in range(len(general_dict)):
+                gbody = dict(tempDict, **general_dict[j])    #两个dict相加
+                gbodys.append(gbody.copy())
+        for i in range(len(gbodys)):
+            h={}
+            h["id"]=i
+            ret=dict(h, **gbodys[i])
+            rets.append(ret)
+        reqs=dict(zip(expList, rets))
+        return reqs
+
     def help_data(self, fp, tab):
         excel_data=[]  #读取的excel数据
         detailsList=[] #不加detail头的detail数据
@@ -201,13 +232,13 @@ class http_process(object):
             response=self.http_general(url, None, header, methods)
             return response
         dicts=self.help_data(path, tab)
+        reg=re.compile('/help/data/push')
+        n=reg.search(url)
+        if n is not None:
+            dicts=self.push_data(path, tab)
         for k in dicts.keys():
             print '-------------------------------------------'
             test_data_json=json.dumps(dicts[k])
-            reg=re.compile('/help/data/push')
-            n=reg.search(url)
-            if n is not None:
-                test_data_json='['+test_data_json+']'
             print test_data_json  ###这个log不要删
             header='{"Authorization":"Bearer 01f0132df1e2b4ab1742053382bc6ec6", "Content-Type":"application/json"}'
             headerdata = json.loads(header)
@@ -283,9 +314,10 @@ class http_process(object):
 
 if __name__ == '__main__':
     hp=http_process()
-    #hp.http_help('http://192.168.22.61/v1/help/data/push', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'push', header, 'POST')
+    hp.http_help('http://192.168.22.61/v1/help/data/push', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'push', header, 'POST')
     #hp.http_help('http://192.168.22.61/v1/help/user/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'usersave', header, 'POST')
-    hp.http_help('http://192.168.22.61/v1/help/record/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'recordsave', header, 'POST')
+    #hp.http_help('http://192.168.22.61/v1/help/record/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'recordsave', header, 'POST')
     #hp.http_health_save('http://192.168.22.61/v1/health/data/save', 'E:\\script\\test\\robotframework\\case\\health_data.xlsx', 'save', header, 'POST')
     #hp.http_exp('http://192.168.22.61/v1/health/user/suggest', 'E:\\script\\test\\oauth\\case\\health_suggest_type_5.xlsx', 'suggest', header, 'POST')
     #hp.http_exp('http://192.168.22.61/v1/users/detail', 'E:\\script\\test\\robotframework\\case\\user.xlsx', 'modifyinfo', header, 'PUT')
+    #hp.push_data('E:\\script\\test\\robotframework\\case\\help.xlsx', 'push')

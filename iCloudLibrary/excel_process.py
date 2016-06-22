@@ -12,7 +12,7 @@ class excel_process(object):
         pass
 
     #对第colnum列进行写操作此模块读取和写入excel时，A1格的角标是[1,1]
-    def readExcel(self, path):
+    def readExcel(self, path, tabname):
         lineList=[]   #读取excel，将所有的数据放到一个list中
         dataList=[]   #按行为单位，将一行作为list一个元素
         paramList=[]  #以字典格式存储
@@ -22,14 +22,14 @@ class excel_process(object):
         #print "Worksheet name(s):", wb.get_sheet_names()
         #取第一张表
         sheetnames = wb.get_sheet_names()
-        ws = wb.get_sheet_by_name(sheetnames[0])
+        ws = wb.get_sheet_by_name(tabname)
         #显示表名，表行数，表列数
         #print "Work Sheet Titile:",ws.title
         row = ws.max_row
         col = ws.max_column
         for i in range(0,row):
             for j in range(0,col):
-                if ws.rows[i][0] is None:
+                if ws.rows[i][0].value is None:
                     break
                 lineList.append(ws.rows[i][j].value)
         for i in range(0,len(lineList),col):
@@ -114,8 +114,10 @@ class excel_process(object):
 if __name__ == '__main__':
     excelList=[]
     ep = excel_process()
-    excelList=ep.readExcelExp('E:\\script\\test\\robotframework\case\\album.xlsx', 'AlbumCreate')
+    #excelList=ep.readExcelExp('E:\\script\\test\\robotframework\case\\album.xlsx', 'AlbumCreate')
     #for i in range(0, len(excelList), 3):
     #    print excelList[i:i+3]
     #v=[165, 166, 167, 168, 169]
     #ep.writeColExcel('E:\\script\\test\\oauth\\case\\group_create.xlsx', 1, v)
+    excelList=ep.readExcel('E:\\script\\test\\robotframework\case\\help.xlsx', 'pushhead')
+    print excelList
