@@ -26,7 +26,8 @@ class http_process(object):
     def health_data(self, fp, tab):
         excel_data=[]  #读取的excel数据
         detailsList=[] #不加detail头的detail数据
-        general_dict={"distance":144.0, "endTime":2, "energy":32.69, "startTime":1, "steps":206, "type":6, "userId":300}
+        #general_dict={"distance":144.0, "endTime":2, "energy":32.69, "startTime":1, "steps":206, "type":6, "userId":300}
+
         tempDict={} #加了detail头的detail数据
         gbody={}     #加了general的数据
         gbodys=[]    #request列表
@@ -35,6 +36,7 @@ class http_process(object):
         expList=[]
         exp= excel_process()
         excel_data=exp.readExcelExp(fp, tab)
+        general_dict=exp.readExcel(fp, 'sum')
         for i in excel_data.keys(): #excel三行数据组成一个detail
             detailsList.append(excel_data[i])
             expList.append(i)
@@ -42,7 +44,8 @@ class http_process(object):
             t=[]
             t.append(detailsList[i])
             tempDict["details"] = t
-            gbody = dict(tempDict, **general_dict)    #两个dict相加
+            gbody = dict(tempDict, **general_dict[i])    #两个dict相加
+            #print gbody
             gbodys.append(gbody.copy())
         for i in range(0, len(gbodys), 1):  # 三个detail作为一个request
             bodys.append(gbodys[i:i+1])
@@ -57,6 +60,9 @@ class http_process(object):
         exp= excel_process()
         detailsList=[] #不加detail头的detail数据
         general_dict=exp.readExcel(fp, "pushhead")
+        for i in range(len(general_dict)):
+            general_dict[i]['timestamp']= ((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
+        #print general_dict
         tempDict={} #加了detail头的detail数据
         gbody={}     #加了general的数据
         gbodys=[]    #request列表
@@ -116,6 +122,26 @@ class http_process(object):
         for k in excel_data.keys():
             print json.dumps(excel_data[k])
             gbody["detailJson"]=json.dumps(excel_data[k])
+            gbodys.append(gbody.copy())
+            expList.append(k)
+        ret = dict(zip(expList, gbodys))
+        print ret
+        return ret
+
+    def config_data(self, fp, tab):
+        excel_data=[]  #读取的excel数据
+        detailsList=[] #不加detail头的detail数据
+        tempDict={} #加了detail头的detail数据
+        gbody={}     #加了general的数据
+        gbodys=[]    #request列表
+        bodys=[]    #三个detail作为一个request
+        expList=[]
+        exp= excel_process()
+        excel_data=exp.readExcelExp(fp, tab)
+        print excel_data
+        for k in excel_data.keys():
+            print json.dumps(excel_data[k])
+            gbody["data"]=json.dumps(excel_data[k])
             gbodys.append(gbody.copy())
             expList.append(k)
         ret = dict(zip(expList, gbodys))
@@ -203,7 +229,10 @@ class http_process(object):
         n=reg.search(url)
         if n is not None:
             dicts=self.suggest_data(path, tab)
-
+        reg=re.compile('/health/config$')
+        n=reg.search(url)
+        if n is not None:
+            dicts=self.config_data(path, tab)
         reg=re.compile('/users/detail')
         p=reg.search(url)
         if p is not None:
@@ -275,17 +304,38 @@ class http_process(object):
             print '-------------------------------------------'
             l1=[]
             l2=[]
+            l3=[]
+            l4=[]
+            tedmpd={}
             tmpd=dicts[k]['data'][0]['details'][0]
             #l1=[x.encode(sys.stdout.encoding) for x in tmpd.keys()]
             l1=[x.encode('utf-8') for x in tmpd.keys()]
             for v in tmpd.values():
-                l2.append(int(v))
+                l2.append(str(v))
             d= dict(map(None, l1, l2))
-
-            dicts[k]['data'][0]['details'].pop(0)
-            dicts[k]['data'][0]['details'].append(d)
-            dicts[k]['data'][0]['startTime']=((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
-            dicts[k]['data'][0]['endTime']=((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
+            detalList=[]
+            detalList.append(d)
+            tedmpd['details']=detalList
+            dicts[k]['data'][0].pop('details')
+            start='%d'%(((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000)
+            end='%d'%(((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000)
+            dicts[k]['data'][0]['startTime']=start
+            dicts[k]['data'][0]['endTime']=end
+            l3=[y.encode('utf-8') for y in dicts[k]['data'][0].keys()]
+            for v in dicts[k]['data'][0].values():
+                l4.append(str(v))
+            dd=dict(map(None, l3, l4))
+            dicts[k]['data'][0]=self.add_dict(tedmpd,dd)
+            #print dicts
+            #dicts[k]['data'][0]['startTime']=((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
+            #dicts[k]['data'][0]['endTime']=((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())*1000
+            ################
+            #dicts[k]['data'][0]['userId']=str(dicts[k]['data'][0]['userId'])
+            #dicts[k]['data'][0]['distance']=str(dicts[k]['data'][0]['distance'])
+            #dicts[k]['data'][0]['energy']=str(dicts[k]['data'][0]['energy'])
+            #dicts[k]['data'][0]['steps']=str(dicts[k]['data'][0]['steps'])
+            #dicts[k]['data'][0]['type']=str(dicts[k]['data'][0]['type'])
+            ################
             dicts[k]['data']=str(dicts[k]['data']).replace("'", '"')
             print dicts[k]    ###这个log不要删
             test_data_urlencode = urllib.urlencode(dicts[k])
@@ -314,10 +364,11 @@ class http_process(object):
 
 if __name__ == '__main__':
     hp=http_process()
-    hp.http_help('http://192.168.22.61/v1/help/data/push', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'push', header, 'POST')
+    #hp.health_data('E:\\script\\test\\robotframework\\case\\health_data.xlsx', 'save')
+    #hp.http_help('http://10.10.17.5/v1/help/data/push', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'push', header, 'POST')
     #hp.http_help('http://192.168.22.61/v1/help/user/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'usersave', header, 'POST')
     #hp.http_help('http://192.168.22.61/v1/help/record/save', 'E:\\script\\test\\robotframework\\case\\help.xlsx', 'recordsave', header, 'POST')
-    #hp.http_health_save('http://192.168.22.61/v1/health/data/save', 'E:\\script\\test\\robotframework\\case\\health_data.xlsx', 'save', header, 'POST')
+    hp.http_health_save('http://192.168.22.61/v1/health/data/save', 'E:\\script\\test\\robotframework\\case\\health_data.xlsx', 'save', header, 'POST')
     #hp.http_exp('http://192.168.22.61/v1/health/user/suggest', 'E:\\script\\test\\oauth\\case\\health_suggest_type_5.xlsx', 'suggest', header, 'POST')
     #hp.http_exp('http://192.168.22.61/v1/users/detail', 'E:\\script\\test\\robotframework\\case\\user.xlsx', 'modifyinfo', header, 'PUT')
     #hp.push_data('E:\\script\\test\\robotframework\\case\\help.xlsx', 'push')
